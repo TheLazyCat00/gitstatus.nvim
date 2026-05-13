@@ -137,59 +137,47 @@ local function file_to_line(file, icon_provider, max_edit_type_len)
 	}
 end
 
+---@param str string
+---@param hl_group string?
+---@return Line
+local function make_line(str, hl_group)
+	return {
+		parts = {
+			{
+				str = str,
+				hl_group = hl_group,
+			},
+		},
+		file = nil,
+	}
+end
+
 ---@param branch string
 ---@param files File[]
 ---@return Line[]
 function M.format_out_lines(branch, files)
 	---@type Line[]
-	local lines = {}
-
-	table.insert(lines, {
-		parts = {
-			{
-				str = 'Branch: ',
-				hl_group = 'Label',
+	local lines = {
+		{
+			parts = {
+				{ str = 'Branch: ', hl_group = 'Label' },
+				{ str = branch, hl_group = 'Function' },
 			},
-			{
-				str = branch,
-				hl_group = 'Function',
-			},
+			file = nil,
 		},
-		file = nil,
-	})
-	table.insert(lines, {
-		parts = {
-			{
-				str = 'Help: ',
-				hl_group = 'Label',
+		{
+			parts = {
+				{ str = 'Help: ', hl_group = 'Label' },
+				{ str = '?', hl_group = 'Function' },
 			},
-			{
-				str = '?',
-				hl_group = 'Function',
-			},
+			file = nil,
 		},
-		file = nil,
-	})
+	}
 
 	if #files == 0 then
-		table.insert(lines, {
-			parts = {
-				{
-					str = '',
-					hl_group = nil,
-				},
-			},
-			file = nil,
-		})
-		table.insert(lines, {
-			parts = {
-				{
-					str = 'nothing to commit, working tree clean',
-					hl_group = nil,
-				},
-			},
-			file = nil,
-		})
+		table.insert(lines, make_line('', nil))
+		table.insert(lines, make_line('nothing to commit, working tree clean', nil))
+		return lines
 	end
 
 	local icon_provider = get_icon_provider()
@@ -197,24 +185,8 @@ function M.format_out_lines(branch, files)
 	local file_table = split_files_by_state(files)
 	for i, files_of_type in ipairs(file_table) do
 		if #files_of_type > 0 then
-			table.insert(lines, {
-				parts = {
-					{
-						str = '',
-						hl_group = nil,
-					},
-				},
-				file = nil,
-			})
-			table.insert(lines, {
-				parts = {
-					{
-						str = file_state_name(i - 1),
-						hl_group = nil,
-					},
-				},
-				file = nil,
-			})
+			table.insert(lines, make_line('', nil))
+			table.insert(lines, make_line(file_state_name(i - 1), nil))
 		end
 		for _, file in ipairs(files_of_type) do
 			table.insert(lines, file_to_line(file, icon_provider, max_edit_type_len))
