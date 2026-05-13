@@ -4,68 +4,68 @@ local M = {}
 ---@param delim string
 ---@return string[]
 function M.split(str, delim)
-  if #str == 0 then
-    return {}
-  end
+	if #str == 0 then
+		return {}
+	end
 
-  local matches = {}
-  local match_start = 1
-  while true do
-    local delim_start, delim_end = str:find(delim, match_start)
-    if delim_start ~= nil and delim_end ~= nil then
-      table.insert(matches, str:sub(match_start, delim_start - 1))
-      match_start = delim_end + 1
-    else
-      local remaining_str = str:sub(match_start)
-      if #remaining_str > 0 then
-        table.insert(matches, remaining_str)
-      end
-      break
-    end
-  end
-  return matches
+	local matches = {}
+	local match_start = 1
+	while true do
+		local delim_start, delim_end = str:find(delim, match_start)
+		if delim_start ~= nil and delim_end ~= nil then
+			table.insert(matches, str:sub(match_start, delim_start - 1))
+			match_start = delim_end + 1
+		else
+			local remaining_str = str:sub(match_start)
+			if #remaining_str > 0 then
+				table.insert(matches, remaining_str)
+			end
+			break
+		end
+	end
+	return matches
 end
 
 ---@param str string
 ---@return string
 function M.strip_trailing_newline(str)
-  local len = #str
-  if str:sub(len) == '\n' then
-    return str:sub(1, len - 1)
-  end
-  return str
+	local len = #str
+	if str:sub(len) == '\n' then
+		return str:sub(1, len - 1)
+	end
+	return str
 end
 
 ---@param str string
 ---@param chars string
 ---@return boolean
 function M.str_starts_with(str, chars)
-  return str:sub(1, #chars) == chars
+	return str:sub(1, #chars) == chars
 end
 
 ---@param strings string[]
 ---@param predicate fun(str: string): boolean
 ---@return string[]
 function M.filter(strings, predicate)
-  local new_lines = {}
-  for _, str in ipairs(strings) do
-    if predicate(str) then
-      table.insert(new_lines, str)
-    end
-  end
-  return new_lines
+	local new_lines = {}
+	for _, str in ipairs(strings) do
+		if predicate(str) then
+			table.insert(new_lines, str)
+		end
+	end
+	return new_lines
 end
 
 ---@param str string
 ---@param max_len integer
 ---@return string
 function M.truncate_string(str, max_len)
-  if #str > max_len then
-    local stripped_str_prefix = '...'
-    return stripped_str_prefix
-      .. str:sub(#str - max_len + #stripped_str_prefix + 1)
-  end
-  return str
+	if #str > max_len then
+		local stripped_str_prefix = '...'
+		return stripped_str_prefix
+			.. str:sub(#str - max_len + #stripped_str_prefix + 1)
+	end
+	return str
 end
 
 return M

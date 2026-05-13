@@ -1,4 +1,4 @@
 ---@type Config
 return {
-  border = 'rounded',
+	border = 'rounded',
 }
