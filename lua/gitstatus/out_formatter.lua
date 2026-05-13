@@ -254,7 +254,7 @@ function M.make_help_window_msg()
 		{
 			parts = {
 				{
-					str = '		s',
+					str = '    s',
 					hl_group = 'Label',
 				},
 				{
@@ -266,7 +266,7 @@ function M.make_help_window_msg()
 					hl_group = 'Function',
 				},
 				{
-					str = '		',
+					str = '    ',
 					hl_group = nil,
 				},
 				{
@@ -282,7 +282,7 @@ function M.make_help_window_msg()
 					hl_group = 'Function',
 				},
 				{
-					str = '		',
+					str = '    ',
 					hl_group = nil,
 				},
 				{
@@ -303,7 +303,7 @@ function M.make_help_window_msg()
 		{
 			parts = {
 				{
-					str = '		o',
+					str = '    o',
 					hl_group = 'Label',
 				},
 				{
@@ -315,7 +315,7 @@ function M.make_help_window_msg()
 					hl_group = 'Function',
 				},
 				{
-					str = '						 ',
+					str = '             ',
 					hl_group = nil,
 				},
 				{
