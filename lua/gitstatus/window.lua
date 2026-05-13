@@ -5,10 +5,7 @@ local M = {}
 local function max_line_length(lines)
 	local max_length = 0
 	for _, line in ipairs(lines) do
-		local line_len = line:len()
-		if line_len > max_length then
-			max_length = line_len
-		end
+		max_length = math.max(max_length, #line)
 	end
 	return max_length
 end
@@ -20,15 +17,14 @@ end
 function M.width(lines, numberwidth, parent_win_width)
 	local margin = 5
 	local width = max_line_length(lines) + numberwidth + margin
-	return width < parent_win_width and width or parent_win_width
+	return math.min(width, parent_win_width)
 end
 
 ---@param lines string[]
 ---@param parent_win_height number
 ---@return number
 function M.height(lines, parent_win_height)
-	local len = #lines
-	return len < parent_win_height and len or parent_win_height
+	return math.min(#lines, parent_win_height)
 end
 
 ---@param parent_win_height number

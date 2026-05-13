@@ -3,11 +3,13 @@ local StringUtils = require('gitstatus.string_utils')
 local M = {}
 
 ---@param args string[]
----@param opts table?
+---@param cwd string?
 ---@return vim.SystemCompleted
-local function run_git(args, opts)
-	opts = opts or {}
-	opts.text = true
+local function run_git(args, cwd)
+	local opts = { text = true }
+	if cwd then
+		opts.cwd = cwd
+	end
 	return vim.system(vim.list_extend({ 'git' }, args), opts):wait()
 end
 
@@ -22,23 +24,15 @@ local function stdout_or_err(obj, prefix)
 	return obj.stdout, nil
 end
 
----@param opts table?
----@return table?
-local function with_text(opts)
-	opts = opts or {}
-	opts.text = true
-	return opts
-end
-
 ---@return string, string?
 function M.status(cwd)
-	local obj = run_git({ 'status', '--porcelain=v1' }, with_text({ cwd = cwd }))
+	local obj = run_git({ 'status', '--porcelain=v1' }, cwd)
 	return stdout_or_err(obj, 'Unable to get git status: ')
 end
 
 ---@return string, string?
 function M.branch(cwd)
-	local obj = run_git({ 'branch' }, with_text({ cwd = cwd }))
+	local obj = run_git({ 'branch' }, cwd)
 	return stdout_or_err(obj, 'Unable to get git branch: ')
 end
 
@@ -46,7 +40,7 @@ end
 ---@param cwd string
 ---@return string?
 function M.stage_file(file, cwd)
-	local obj = run_git({ 'add', file }, { cwd = cwd })
+	local obj = run_git({ 'add', file }, cwd)
 	if obj.code ~= 0 then
 		return 'Unable to stage file: ' .. obj.stderr
 	end
@@ -56,7 +50,7 @@ end
 ---@param cwd string
 ---@return string?
 function M.unstage_modified_file(file, cwd)
-	local obj = run_git({ 'restore', '--staged', file }, { cwd = cwd })
+	local obj = run_git({ 'restore', '--staged', file }, cwd)
 	if obj.code ~= 0 then
 		return 'Unable to unstage file: ' .. obj.stderr
 	end
@@ -66,7 +60,7 @@ end
 ---@param cwd string
 ---@return string?
 function M.unstage_added_file(file, cwd)
-	local obj = run_git({ 'rm', '--cached', file }, { cwd = cwd })
+	local obj = run_git({ 'rm', '--cached', file }, cwd)
 	if obj.code ~= 0 then
 		return 'Unable to unstage file: ' .. obj.stderr
 	end
@@ -74,7 +68,7 @@ end
 
 ---@return string?
 function M.stage_all(cwd)
-	local obj = run_git({ 'add', '-A' }, { cwd = cwd })
+	local obj = run_git({ 'add', '-A' }, cwd)
 	if obj.code ~= 0 then
 		return 'Unable to stage all changes: ' .. obj.stderr
 	end
@@ -83,7 +77,7 @@ end
 ---@param filename string
 ---@return string, string? # success message, error
 function M.commit(filename, cwd)
-	local obj = run_git({ 'commit', '-F', filename }, { cwd = cwd })
+	local obj = run_git({ 'commit', '-F', filename }, cwd)
 	if obj.code ~= 0 then
 		return '', obj.stderr
 	end
@@ -92,7 +86,7 @@ end
 
 ---@return string, string? # success message, error
 function M.push(cwd)
-	local obj = run_git({ 'push' }, { cwd = cwd })
+	local obj = run_git({ 'push' }, cwd)
 	if obj.code ~= 0 then
 		return '', obj.stderr
 	end
