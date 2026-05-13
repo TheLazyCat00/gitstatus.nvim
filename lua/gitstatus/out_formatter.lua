@@ -118,27 +118,23 @@ local function file_to_line(file, icon_provider, max_edit_type_len)
 		hl_group = nil,
 	}
 
-	---@type LinePart
-	local icon = nil
-	if icon_provider ~= nil then
+	---@type LinePart[]
+	local parts = { edit_type, margin }
+
+	if icon_provider then
 		local icon_str, hl_group = icon_provider(file.path)
-		if icon_str ~= nil and icon_str ~= '' then
-			icon = { str = icon_str .. ' ', hl_group = hl_group }
+		if icon_str and icon_str ~= '' then
+			table.insert(parts, { str = icon_str .. ' ', hl_group = hl_group })
 		end
 	end
 
-	---@type LinePart[]
-	local parts = { edit_type, margin, name }
-	if icon ~= nil then
-		parts = { edit_type, margin, icon, name }
-	end
+	table.insert(parts, name)
 
 	---@type Line
-	local line = {
+	return {
 		parts = parts,
 		file = file,
 	}
-	return line
 end
 
 ---@param branch string

@@ -116,7 +116,7 @@ end
 ---@return integer
 local function get_new_cursor_row(cursor_file, buf_lines)
 	local default = Line.next_file_index(buf_lines, 0) or 1
-	if cursor_file == nil then
+	if not cursor_file then
 		return default
 	end
 	return Line.line_index_of_file(buf_lines, cursor_file) or default
@@ -226,28 +226,24 @@ end
 ---@param state State
 local function go_next_file(state)
 	local cursor = vim.api.nvim_win_get_cursor(state.window_id)
-	local row = cursor[1]
-	local col = cursor[2]
+	local row, col = cursor[1], cursor[2]
 
 	local motion_count = vim.api.nvim_get_vvar('count')
 	local new_row = motion_count > 0 and row + motion_count
 		or Line.next_file_index(state.buf_lines, row)
-		or row < #state.buf_lines and row + 1
-		or row
+		or math.min(row + 1, #state.buf_lines)
 	vim.api.nvim_win_set_cursor(state.window_id, { new_row, col })
 end
 
 ---@param state State
 local function go_prev_file(state)
 	local cursor = vim.api.nvim_win_get_cursor(state.window_id)
-	local row = cursor[1]
-	local col = cursor[2]
+	local row, col = cursor[1], cursor[2]
 
 	local motion_count = vim.api.nvim_get_vvar('count')
 	local new_row = motion_count > 0 and row - motion_count
 		or Line.prev_file_index(state.buf_lines, row)
-		or row > 1 and row - 1
-		or row
+		or math.max(row - 1, 1)
 	vim.api.nvim_win_set_cursor(state.window_id, { new_row, col })
 end
 
