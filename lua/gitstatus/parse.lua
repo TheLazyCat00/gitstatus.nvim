@@ -27,7 +27,8 @@ local function parse_line_path(path_str)
 	local i = 1
 	while i <= #path_str do
 		local ch = path_str:sub(i, i)
-		if ch == '"' and path_str:sub(i - 1, i) ~= '\\"' then
+		local prev_ch = i > 1 and path_str:sub(i - 1, i - 1) or ''
+		if ch == '"' and prev_ch ~= '\\' then
 			inside_quote = not inside_quote
 		elseif path_str:sub(i, i + 3) == ' -> ' and not inside_quote then
 			on_path1 = false

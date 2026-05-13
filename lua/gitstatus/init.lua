@@ -31,14 +31,14 @@ end
 
 ---@param win_id integer?
 local function safe_close_win(win_id)
-	if win_id ~= nil and vim.api.nvim_win_is_valid(win_id) then
+	if win_id and vim.api.nvim_win_is_valid(win_id) then
 		vim.api.nvim_win_close(win_id, false)
 	end
 end
 
 ---@param buf_id integer?
 local function safe_delete_buf(buf_id)
-	if buf_id ~= nil and vim.api.nvim_buf_is_valid(buf_id) then
+	if buf_id and vim.api.nvim_buf_is_valid(buf_id) then
 		vim.api.nvim_buf_delete(buf_id, {})
 	end
 end
@@ -58,9 +58,7 @@ end
 ---@param lock_buf boolean?
 ---@return string[]
 local function render_lines(buf_id, namespace_id, lines, lock_buf)
-	if lock_buf == nil then
-		lock_buf = true
-	end
+	lock_buf = lock_buf == nil and true or lock_buf
 
 	local line_strings = Line.get_lines_strings(lines)
 	vim.api.nvim_set_option_value('modifiable', true, { buf = buf_id })
@@ -70,7 +68,7 @@ local function render_lines(buf_id, namespace_id, lines, lock_buf)
 	for row, line in ipairs(lines) do
 		local col = 0
 		for _, part in ipairs(line.parts) do
-			if part.hl_group ~= nil and part.hl_group ~= '' and #part.str > 0 then
+			if part.hl_group and part.hl_group ~= '' and #part.str > 0 then
 				vim.api.nvim_buf_set_extmark(buf_id, namespace_id, row - 1, col, {
 					end_col = col + #part.str,
 					hl_group = part.hl_group,
@@ -88,7 +86,7 @@ end
 
 ---@param state State
 local function toggle_help_window(state)
-	if state.help_window_id ~= nil then
+	if state.help_window_id then
 		safe_close_win(state.help_window_id)
 		state.help_window_id = nil
 		return
@@ -100,7 +98,7 @@ local function toggle_help_window(state)
 	local lines_strings = render_lines(buf_id, namespace_id, lines)
 
 	local pos = vim.api.nvim_win_get_position(state.window_id)
-	local row, col = unpack(pos)
+	local row, col = pos[1], pos[2]
 	state.help_window_id = vim.api.nvim_open_win(buf_id, false, {
 		relative = 'editor',
 		width = WINDOW_WIDTH,
@@ -133,27 +131,29 @@ local function refresh_buffer(state, cursor_file)
 
 	local col = vim.api.nvim_win_get_cursor(state.window_id)[2]
 
-	local status_out, err = git.status(state.repo_root)
-	if err ~= nil then
-		vim.notify(err, vim.log.levels.ERROR)
+	local status_out, status_err = git.status(state.repo_root)
+	if status_err then
+		vim.notify(status_err, vim.log.levels.ERROR)
 		close_status_window(state)
 		return
 	end
+
+	local branch_out, branch_err = git.branch(state.repo_root)
+	if branch_err then
+		vim.notify(branch_err, vim.log.levels.ERROR)
+		close_status_window(state)
+		return
+	end
+
+	local branch, parse_err = parse.git_branch(branch_out)
+	if parse_err then
+		vim.notify(parse_err, vim.log.levels.ERROR)
+		close_status_window(state)
+		return
+	end
+
 	local paths = parse.git_status(status_out)
 	local files = File.paths_to_files(paths)
-
-	local branch_out, err2 = git.branch(state.repo_root)
-	if err2 ~= nil then
-		vim.notify(err2, vim.log.levels.ERROR)
-		close_status_window(state)
-		return
-	end
-	local branch, err3 = parse.git_branch(branch_out)
-	if err3 ~= nil then
-		vim.notify(err3, vim.log.levels.ERROR)
-		close_status_window(state)
-		return
-	end
 
 	state.buf_lines = out_formatter.format_out_lines(branch, files)
 	local lines_strings =
@@ -161,7 +161,7 @@ local function refresh_buffer(state, cursor_file)
 
 	local optimal_height = Window.height(lines_strings, state.parent_win_height)
 	local max_height = 15
-	local height = optimal_height > max_height and max_height or optimal_height
+	local height = math.min(optimal_height, max_height)
 	vim.api.nvim_win_set_config(state.window_id, {
 		relative = 'editor',
 		width = WINDOW_WIDTH,
@@ -174,7 +174,7 @@ local function refresh_buffer(state, cursor_file)
 		col,
 	})
 
-	if state.help_window_id ~= nil then
+	if state.help_window_id then
 		safe_close_win(state.help_window_id)
 		state.help_window_id = nil
 		toggle_help_window(state)
@@ -196,7 +196,7 @@ end
 local function toggle_stage_file(state)
 	local row = vim.api.nvim_win_get_cursor(state.window_id)[1]
 	local line = state.buf_lines[row]
-	if line == nil or line.file == nil then
+	if not line or not line.file then
 		vim.notify(
 			'Unable to stage/unstage file: invalid line',
 			vim.log.levels.WARN
@@ -206,13 +206,13 @@ local function toggle_stage_file(state)
 
 	local toggle_stage_file_func = get_toggle_stage_file_func(line.file)
 	local err = toggle_stage_file_func(line.file.path, state.repo_root)
-	if err ~= nil then
+	if err then
 		vim.notify(err, vim.log.levels.ERROR)
 		return
 	end
-	if line.file.orig_path ~= nil then
+	if line.file.orig_path then
 		err = toggle_stage_file_func(line.file.orig_path, state.repo_root)
-		if err ~= nil then
+		if err then
 			vim.notify(err, vim.log.levels.ERROR)
 			return
 		end
@@ -220,7 +220,7 @@ local function toggle_stage_file(state)
 
 	local next_file_index = Line.next_file_index(state.buf_lines, row)
 		or Line.prev_file_index(state.buf_lines, row)
-	return next_file_index ~= nil and state.buf_lines[next_file_index].file or nil
+	return next_file_index and state.buf_lines[next_file_index].file or nil
 end
 
 ---@param state State
@@ -255,7 +255,7 @@ end
 local function open_file(state)
 	local row = vim.api.nvim_win_get_cursor(state.window_id)[1]
 	local line = state.buf_lines[row]
-	if line == nil or line.file == nil then
+	if not line or not line.file then
 		vim.notify('Unable to open file: invalid line', vim.log.levels.WARN)
 		return
 	end
@@ -292,7 +292,7 @@ local function open_commit_prompt(state)
 
 	local height = 7
 	local pos = vim.api.nvim_win_get_position(state.window_id)
-	local row, col = unpack(pos)
+	local row, col = pos[1], pos[2]
 	vim.api.nvim_open_win(buf_id, true, {
 		relative = 'editor',
 		width = WINDOW_WIDTH,
@@ -317,21 +317,14 @@ local function open_commit_prompt(state)
 			vim.api.nvim_buf_set_lines(ev.buf, 0, -1, true, msg_without_comments)
 			vim.cmd('silent write')
 
-			-- TODO: figure out why this notification isn't run until after the commit has finished
-			-- TODO: if possible, consider running the hook when opening the commit window instead of when quitting it
-			-- if git.repo_has_pre_commit_hook(repo_git_dir) then
-			--	 vim.notify('Running pre-commit hook...', vim.log.levels.INFO)
-			-- end
-
 			local commit_msg_file = vim.api.nvim_buf_get_name(ev.buf)
-			local _, err2 = git.commit(commit_msg_file, state.repo_root)
+			local _, commit_err = git.commit(commit_msg_file, state.repo_root)
 
-			-- redraw before sending notification to avoid annoying prompt
 			vim.cmd('redraw')
 
-			if err2 ~= nil then
+			if commit_err then
 				vim.notify(
-					StringUtils.strip_trailing_newline(err2),
+					StringUtils.strip_trailing_newline(commit_err),
 					vim.log.levels.WARN
 				)
 			else
@@ -361,7 +354,7 @@ local function register_keybindings(state)
 	})
 	vim.keymap.set('n', 'a', function()
 		local err = git.stage_all(state.repo_root)
-		if err ~= nil then
+		if err then
 			vim.notify(err, vim.log.levels.ERROR)
 			return
 		end
@@ -396,7 +389,7 @@ local function register_keybindings(state)
 	})
 	vim.keymap.set('n', 'p', function()
 		local out, err = git.push(state.repo_root)
-		if err ~= nil then
+		if err then
 			vim.notify(StringUtils.strip_trailing_newline(err), vim.log.levels.WARN)
 			return
 		end
@@ -433,17 +426,17 @@ function M.open_status_win()
 		vim.notify = nvim_notify
 	end
 
-	local repo_root, err = git.repo_root_dir()
-	if err ~= nil then
-		vim.notify(err, vim.log.levels.ERROR)
+	local repo_root, root_err = git.repo_root_dir()
+	if root_err then
+		vim.notify(root_err, vim.log.levels.ERROR)
 		safe_close_win(window_id)
 		safe_delete_buf(buf_id)
 		return
 	end
 
-	local repo_git_dir, err2 = git.repo_git_dir()
-	if err2 ~= nil then
-		vim.notify(err2, vim.log.levels.ERROR)
+	local repo_git_dir, git_dir_err = git.repo_git_dir()
+	if git_dir_err then
+		vim.notify(git_dir_err, vim.log.levels.ERROR)
 		safe_close_win(window_id)
 		safe_delete_buf(buf_id)
 		return
