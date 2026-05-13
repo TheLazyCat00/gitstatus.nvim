@@ -46,4 +46,7 @@ While inside the Git status window:
 - `a` – Stage all changes
 - `c` – Open commit prompt
 - `o` - Open file on the current line
+- `j` / `k` – Move to next/previous file
+- `p` – Push
+- `?` – Toggle help
 - `q` – Close window

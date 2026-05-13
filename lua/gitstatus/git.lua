@@ -2,123 +2,127 @@ local StringUtils = require('gitstatus.string_utils')
 
 local M = {}
 
+---@param args string[]
+---@param opts table?
+---@return vim.SystemCompleted
+local function run_git(args, opts)
+  opts = opts or {}
+  opts.text = true
+  return vim.system(vim.list_extend({ 'git' }, args), opts):wait()
+end
+
+---@param obj vim.SystemCompleted
+---@param prefix string
 ---@return string, string?
-function M.status()
-	local obj = vim
-		.system({ 'git', 'status', '--porcelain=v1' }, { text = true })
-		:wait()
-	if obj.code ~= 0 then
-		return '', 'Unable to get git status: ' .. obj.stderr
-	end
-	return obj.stdout, nil
+local function stdout_or_err(obj, prefix)
+  if obj.code ~= 0 then
+    local err = obj.stderr ~= '' and obj.stderr or obj.stdout
+    return '', prefix .. err
+  end
+  return obj.stdout, nil
+end
+
+---@param opts table?
+---@return table?
+local function with_text(opts)
+  opts = opts or {}
+  opts.text = true
+  return opts
 end
 
 ---@return string, string?
-function M.branch()
-	local obj = vim.system({ 'git', 'branch' }, { text = true }):wait()
-	if obj.code ~= 0 then
-		return '', 'Unable to get git branch: ' .. obj.stderr
-	end
-	return obj.stdout, nil
+function M.status(cwd)
+  local obj = run_git({ 'status', '--porcelain=v1' }, with_text({ cwd = cwd }))
+  return stdout_or_err(obj, 'Unable to get git status: ')
+end
+
+---@return string, string?
+function M.branch(cwd)
+  local obj = run_git({ 'branch' }, with_text({ cwd = cwd }))
+  return stdout_or_err(obj, 'Unable to get git branch: ')
 end
 
 ---@param file string
 ---@param cwd string
 ---@return string?
 function M.stage_file(file, cwd)
-	local obj = vim
-		.system({ 'git', 'add', file }, { text = true, cwd = cwd })
-		:wait()
-	if obj.code ~= 0 then
-		return 'Unable to stage file: ' .. obj.stderr
-	end
+  local obj = run_git({ 'add', file }, { cwd = cwd })
+  if obj.code ~= 0 then
+    return 'Unable to stage file: ' .. obj.stderr
+  end
 end
 
 ---@param file string
 ---@param cwd string
 ---@return string?
 function M.unstage_modified_file(file, cwd)
-	local obj = vim
-		.system({ 'git', 'restore', '--staged', file }, { text = true, cwd = cwd })
-		:wait()
-	if obj.code ~= 0 then
-		return 'Unable to unstage file: ' .. obj.stderr
-	end
+  local obj = run_git({ 'restore', '--staged', file }, { cwd = cwd })
+  if obj.code ~= 0 then
+    return 'Unable to unstage file: ' .. obj.stderr
+  end
 end
 
 ---@param file string
 ---@param cwd string
 ---@return string?
 function M.unstage_added_file(file, cwd)
-	local obj = vim
-		.system({ 'git', 'rm', '--cached', file }, { text = true, cwd = cwd })
-		:wait()
-	if obj.code ~= 0 then
-		return 'Unable to unstage file: ' .. obj.stderr
-	end
+  local obj = run_git({ 'rm', '--cached', file }, { cwd = cwd })
+  if obj.code ~= 0 then
+    return 'Unable to unstage file: ' .. obj.stderr
+  end
 end
 
 ---@return string?
-function M.stage_all()
-	local obj = vim.system({ 'git', 'add', '-A' }, { text = true }):wait()
-	if obj.code ~= 0 then
-		return 'Unable to stage all changes: ' .. obj.stderr
-	end
+function M.stage_all(cwd)
+  local obj = run_git({ 'add', '-A' }, { cwd = cwd })
+  if obj.code ~= 0 then
+    return 'Unable to stage all changes: ' .. obj.stderr
+  end
 end
 
 ---@param filename string
 ---@return string, string? # success message, error
-function M.commit(filename)
-	local obj = vim
-		.system({ 'git', 'commit', '-F', filename }, { text = true })
-		:wait()
-	if obj.code ~= 0 then
-		return '', obj.stderr
-	else
-		return obj.stdout, nil
-	end
+function M.commit(filename, cwd)
+  local obj = run_git({ 'commit', '-F', filename }, { cwd = cwd })
+  if obj.code ~= 0 then
+    return '', obj.stderr
+  end
+  return obj.stdout, nil
 end
 
 ---@return string, string? # success message, error
-function M.push()
-	local obj = vim
-		.system({ 'git', 'push' }, {text = true })
-		:wait()
-	if obj.code ~= 0 then
-		return '', obj.stderr
-	else
-		return obj.stdout, nil
-	end
+function M.push(cwd)
+  local obj = run_git({ 'push' }, { cwd = cwd })
+  if obj.code ~= 0 then
+    return '', obj.stderr
+  end
+  return obj.stdout, nil
 end
 
 ---@return string, string?
 function M.repo_root_dir()
-	local obj = vim
-		.system({ 'git', 'rev-parse', '--show-toplevel' }, { text = true })
-		:wait()
-	if obj.code ~= 0 then
-		return '', 'Unable to get git repo root dir: ' .. obj.stderr
-	end
-	return StringUtils.strip_trailing_newline(obj.stdout), nil
+  local obj = run_git({ 'rev-parse', '--show-toplevel' }, nil)
+  if obj.code ~= 0 then
+    return '', 'Unable to get git repo root dir: ' .. obj.stderr
+  end
+  return StringUtils.strip_trailing_newline(obj.stdout), nil
 end
 
 ---@param repo_git_dir string
 ---@return boolean
 function M.repo_has_pre_commit_hook(repo_git_dir)
-	local obj =
-		vim.system({ 'test', '-e', repo_git_dir .. '/hooks/pre-commit' }):wait()
-	return obj.code == 0
+  local obj =
+    vim.system({ 'test', '-e', repo_git_dir .. '/hooks/pre-commit' }):wait()
+  return obj.code == 0
 end
 
 ---@return string, string?
 function M.repo_git_dir()
-	local obj = vim
-		.system({ 'git', 'rev-parse', '--git-dir' }, { text = true })
-		:wait()
-	if obj.code ~= 0 then
-		return '', 'Unable to get git dir: ' .. obj.stderr
-	end
-	return StringUtils.strip_trailing_newline(obj.stdout), nil
+  local obj = run_git({ 'rev-parse', '--git-dir' }, nil)
+  if obj.code ~= 0 then
+    return '', 'Unable to get git dir: ' .. obj.stderr
+  end
+  return StringUtils.strip_trailing_newline(obj.stdout), nil
 end
 
 return M
