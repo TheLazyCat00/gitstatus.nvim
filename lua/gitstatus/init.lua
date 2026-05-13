@@ -7,12 +7,18 @@ local out_formatter = require('gitstatus.out_formatter')
 local parse = require('gitstatus.parse')
 
 local M = {}
+local config = require('gitstatus.defaults')
 
 ---@class State
 ---@field help_window_id integer?
 ---@field buf_lines Line[]
 
 local WINDOW_WIDTH = 80
+
+local function get_border_chars()
+  local border = config.border
+  return require('gitstatus.constants').BORDER_CHARS[border]
+end
 
 ---@param state State
 local function toggle_help_window(state)
@@ -48,7 +54,7 @@ local function toggle_help_window(state)
     col = col,
     zindex = 100,
     style = 'minimal',
-    border = { '╔', '═', '╗', '║', '╝', '═', '╚', '║' },
+    border = get_border_chars(),
   })
 end
 
@@ -276,7 +282,7 @@ local function open_commit_prompt(
     row = row - height - 2,
     col = col,
     title = 'Git commit',
-    border = { '╔', '═', '╗', '║', '╝', '═', '╚', '║' },
+    border = get_border_chars(),
     noautocmd = true,
   })
   vim.cmd('silent write')
@@ -411,20 +417,28 @@ local function register_keybindings(
     buffer = buf_id,
     desc = 'Open file',
   })
-  vim.keymap.set('n', 'c', function()
-    open_commit_prompt(
-      window_id,
-      buf_id,
-      namespace_id,
-      parent_win_width,
-      parent_win_height,
-      repo_git_dir,
-      state
-    )
-  end, {
-    buffer = buf_id,
-    desc = 'Open commit prompt',
-  })
+  vim.keymap.set(
+    'n',
+    'c',
+    function()
+      open_commit_prompt(
+        window_id,
+        buf_id,
+        namespace_id,
+        parent_win_width,
+        parent_win_height,
+        repo_git_dir,
+        state
+      )
+    end,
+    { buffer = buf_id, desc = 'Open commit prompt' }
+  )
+  vim.keymap.set(
+    'n',
+    'p',
+    git.push,
+    { buffer = buf_id, desc = 'Push' }
+  )
   vim.keymap.set('n', '?', function()
     toggle_help_window(state)
   end, {
@@ -445,7 +459,7 @@ function M.open_status_win()
     row = Window.row(parent_win_height, default_height),
     col = Window.column(parent_win_width, WINDOW_WIDTH),
     title = 'Git status',
-    border = { '╔', '═', '╗', '║', '╝', '═', '╚', '║' },
+    border = get_border_chars(),
   })
 
   local nvim_notify_exists, nvim_notify = pcall(require, 'notify')
@@ -500,6 +514,10 @@ function M.open_status_win()
     parent_win_height,
     state
   )
+end
+
+function M.setup(opts)
+  config = vim.tbl_extend("force", config, opts)
 end
 
 return M

@@ -79,6 +79,18 @@ function M.commit(filename)
   end
 end
 
+---@return string, string? # success message, error
+function M.push()
+  local obj = vim
+    .system({ 'git', 'push' }, {text = true })
+    :wait()
+  if obj.code ~= 0 then
+    return '', obj.stderr
+  else
+    return obj.stdout, nil
+  end
+end
+
 ---@return string, string?
 function M.repo_root_dir()
   local obj = vim
